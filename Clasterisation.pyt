@@ -96,7 +96,7 @@ class Tool(object):
         data = parameters[0].value
         arcpy.AddMessage(data)
 
-        self.points = [] #[gps_point]
+        self.points = [] # type: List[gps_point]
         with arcpy.da.SearchCursor(data, ["SHAPE@","Ve","Vn"]) as cursor:
             arcpy.AddMessage(cursor)
             for row in cursor:
