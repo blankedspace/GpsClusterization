@@ -1,7 +1,12 @@
 import re
 import arcpy
 from EarthSphereLib import *
+import EarthSphereLib
 import Clastrization
+imp.reload(EarthSphereLib)
+import li_method
+import imp
+imp.reload(li_method)
 import copy
 import math
 
@@ -96,7 +101,7 @@ class Tool(object):
         data = parameters[0].value
         arcpy.AddMessage(data)
 
-        self.points = [] # type: List[gps_point]
+        self.points = [] # type: [gps_point]
         with arcpy.da.SearchCursor(data, ["SHAPE@","Ve","Vn"]) as cursor:
             arcpy.AddMessage(cursor)
             for row in cursor:
@@ -117,7 +122,7 @@ class Tool(object):
 
         for i in range(parameters[4].value):
             cpy = copy.deepcopy(self.points)
-            points = Clastrization.methodThree(cpy)
+            points = li_method.calculate(cpy)
             self.claster.append(points)
             i = 0
             while i < len(self.points):

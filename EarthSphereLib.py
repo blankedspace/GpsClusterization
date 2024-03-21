@@ -1,6 +1,6 @@
 from math import *
 import numpy as np
-
+import math
 def to_decart(lat, long):
     long = radians(long)
     lat = radians(lat)
@@ -21,6 +21,15 @@ def globalToLocalMatrix(gamma, phi):
          [-sin(phi), cos(phi), 0],
          [-cos(gamma)*cos(phi), -cos(gamma)*sin(phi), -sin(gamma)]]
     return T
+
+
+class polus:
+    pn = 0.
+    pe = 0.
+    def __init__(self, pn, pe):
+        self.pn = pn
+        self.pe = pe
+
 class gps_point:
     #local
     Ve = 0.
@@ -29,13 +38,16 @@ class gps_point:
     long = 0.
 
     #global
+    Va = 0.
     Vx = 0.
     Vy = 0.
     Vz = 0.
     x = 0.
     y = 0.
     z = 0.
-    def __init__(self, lat, long,):
+
+    pole = polus(-999,-999)
+    def __init__(self, lat, long):
         self.lat = lat
         self.long = long
 
@@ -70,8 +82,112 @@ class gps_point:
         self.Vy = global_v[1]
         self.Vz = global_v[2]
 
+        if self.Vn == 0:
+            if self.Ve > 0:
+                self.Va = math.pi/2
+            else:
+                self.Va = -math.pi/2
+        elif self.Ve == 0:
+                if self.Vn > 0:
+                    self.Va = 0
+                else:
+                    self.Va = math.pi
+        else:
+             self.Va = math.atan(self.Ve / self.Vn)
+             if self.Vn < 0 and self.Ve > 0:
+                  self.Va = self.Va + math.pi
+             if self.Vn < 0 and self.Ve < 0:
+                  self.Va = self.Va - math.pi
+
 def reverse(arrayOfSpeeds):
-        # type: ([gps_point]) -> None
+    point1 = arrayOfSpeeds[0]
+    point2 = arrayOfSpeeds[1]
+    point3 = arrayOfSpeeds[2]
+    find_pole = False
+
+    if point1.long > point2.long:
+        point1, point2 = point2, point1
+
+    x1 = point1.lat / 180 * math.pi
+    y1 = point1.long / 180 * math.pi
+    x2 = point2.lat / 180 * math.pi
+    y2 = point2.long / 180 * math.pi
+    
+    if point1.Va > 0:
+        a1 = math.pi - point1.Va
+    else:
+        a1 = abs(point1.Va)
+    
+    if point2.Va > 0:
+        a2 = math.pi - point2.Va
+    else:
+        a2 = abs(point2.Va)
+
+
+    g1 = a1 - math.pi / 2
+    g2 = math.pi / 2 - a2
+
+    D = math.sin(x1) * math.sin(x2) + math.cos(x1) * math.cos(x2) * math.cos(y2 - y1)
+    if (abs(D) >= 1):
+        return None
+    D = math.atan(-D / math.sqrt(-D * D + 1)) + 2 * math.atan(1)
+
+    F1 = math.sin(math.pi / 2 - x2) * math.sin(y2 - y1) / math.sin(D)
+    F2 = math.sin(math.pi / 2 - x1) * math.sin(y2 - y1) / math.sin(D)
+
+    if (abs(F1) >= 1) or (abs(F2) >= 1):
+        return None
+    
+    F1 = math.atan(F1 / math.sqrt(-F1 * F1 + 1))
+    if g1 < 0:
+        F1 = -F1
+    F2 = math.atan(F2 / math.sqrt(-F2 * F2 + 1))
+    if F1 > 0:
+        F2 = -F2
+
+    h1 = F1 + g1
+    h2 = F2 + g2
+    z1 = math.atan(math.sin(D) / (math.sin(h1) / math.tan(h2) + math.cos(h1) * math.cos(D)))
+    
+    if g1 < 0:
+        z1 = -z1
+
+    q = math.cos(z1) * math.cos(math.pi / 2 - x1) + math.sin(z1) * math.sin(math.pi / 2 - x1) * math.cos(g1)
+    if (abs(q) >= 1):
+        return None
+    q = math.atan(-q / math.sqrt(-q * q + 1)) + 2 * math.atan(1)
+    arf1 = math.sin(z1) * math.sin(g1) / math.sin(q)
+    if (abs(arf1) >= 1):
+        return None
+    arf1 = math.atan(arf1 / math.sqrt(-arf1 * arf1 + 1))
+
+    pn = math.pi / 2 - q
+    pe = y1 - arf1
+    
+    if q < 0:
+        return None
+    
+    d = math.sin(x1) * math.sin(pn) + math.cos(x1) * math.cos(pn) * math.cos(pe - y1)
+    if abs(d) >= 1:
+        return None
+    d = math.atan(-d / math.sqrt(-d * d + 1)) + 2 * math.atan(1)
+    w1 = math.sqrt(point1.Ve**2 + point1.Vn ** 2) / (11.12 * math.sin(d))
+    point3 = gps_point(0, 0)
+    if (point3.y == pe):
+        j = math.pi / 2 
+    else:
+        j = math.atan((point3.x - pn) / (point3.y - pe))
+    if (point3.Va > (-math.pi / 2 - j)) and (point3.Va < (math.pi / 2 - j)):
+        i = 1
+    else:
+        i = -1
+    if (point3.y - pe) < 0:
+        i = -i
+    wp = i * w1
+    return pe, pn
+
+
+def reverse_old(arrayOfSpeeds):
     A = 0
     B = 0
     C = 0
@@ -113,3 +229,5 @@ def reverse(arrayOfSpeeds):
     phi = atan(tanphi)
 
     return gamma, phi
+
+

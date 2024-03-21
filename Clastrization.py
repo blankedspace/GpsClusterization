@@ -3,7 +3,7 @@ import random
 import math
 import copy
 
-MAX_ITERATIONS = 1e5
+MAX_ITERATIONS = 1e3
 ERR_RATE = 20 #percent
 DISTANCE = 1 #percent
 
